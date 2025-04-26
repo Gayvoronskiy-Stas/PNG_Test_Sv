@@ -119,7 +119,7 @@ class QuizBot:
 
 
 def main() -> None:
-    TOKEN = "7223808501:AAH_QtfPx-Kc8ge1-elYtwFQhXOZ7D8_VNU"
+    TOKEN = "TOKEN_TGBOT"
     EXCEL_PATH = "Test1.xlsx"
 
     app = Application.builder().token(TOKEN).build()
