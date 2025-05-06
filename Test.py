@@ -36,7 +36,8 @@ class QuizBot:
                     questions TEXT,
                     current_question INTEGER,
                     score INTEGER,
-                    selected_answers TEXT
+                    selected_answers TEXT,
+                    user_answers TEXT
                 )
             """)
 
@@ -182,6 +183,14 @@ class QuizBot:
         try:
             user_id = update.effective_user.id
             random_questions = random.sample(self.questions, 10)
+            # Shuffle answer options for each question
+            for question in random_questions:
+                indices = list(range(1, 5))
+                random.shuffle(indices)
+                question["shuffled_indices"] = indices  # Map: shuffled position -> original index
+                shuffled_options = [question["options"][idx - 1] for idx in indices]
+                question["shuffled_options"] = shuffled_options
+
             user_data = {
                 "questions": random_questions,
                 "current_question": 0,
@@ -207,15 +216,15 @@ class QuizBot:
             await update.effective_message.reply_text("Произошла ошибка. Попробуйте снова.")
 
     def format_question(self, user_state: Dict, question_data: Dict) -> str:
-        """Format question text with options, displaying full text and separators."""
+        """Format question text with shuffled options and separators."""
         message_text = (
             f"Вопрос {user_state['current_question'] + 1}/10\n\n"
             f"{question_data['question']}\n\n"
         )
-        for i, option in enumerate(question_data['options'], start=1):
-            checkbox = "✅" if i in user_state["selected_answers"] else "⬜️"
+        for i, option in enumerate(question_data['shuffled_options'], start=1):
+            checkbox = "✅" if i in user_state["selected_answers"] else "✎"
             message_text += f"{checkbox} Вариант {i}: {option}\n"
-            if i < len(question_data['options']):
+            if i < len(question_data['shuffled_options']):
                 message_text += f"{'-' * 50}\n"
         return message_text
 
@@ -299,11 +308,17 @@ class QuizBot:
                 correct_answers = set(question_data["correct_answers"])
                 user_answers = set(user_state["selected_answers"])
 
+                # Map shuffled indices back to original indices
+                original_user_answers = set()
+                for shuffled_idx in user_answers:
+                    original_idx = question_data["shuffled_indices"][shuffled_idx - 1]
+                    original_user_answers.add(original_idx)
+
                 if "user_answers" not in user_state:
                     user_state["user_answers"] = []
-                user_state["user_answers"].append(list(user_answers))
+                user_state["user_answers"].append(list(original_user_answers))
 
-                if user_answers == correct_answers:
+                if original_user_answers == correct_answers:
                     user_state["score"] += 1
 
                 user_state["current_question"] += 1
